@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KILLIX Admin</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #0b0d12;
+      color: #f5f7fb;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .wrap {
+      max-width: 1050px;
+      margin: auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: #151923;
+      border: 1px solid #29303d;
+      border-radius: 18px;
+      padding: 20px;
+      margin: 15px 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    input, button {
+      padding: 11px;
+      border-radius: 10px;
+      border: 1px solid #333b4b;
+      background: #0d1118;
+      color: white;
+      font-size: 15px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: white;
+      color: #111;
+    }
+
+    .number {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .muted {
+      color: #9aa5b5;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    td, th {
+      padding: 12px;
+      border-bottom: 1px solid #29303d;
+      text-align: left;
+    }
+
+    @media (max-width: 650px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .wrap {
+        padding: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+  <!-- ADMIN LOGIN -->
+  <section id="loginBox" class="card"
+           style="max-width:430px;margin:12vh auto">
+
+    <h1>KILLIX Admin</h1>
+    <p class="muted">Faqat administrator uchun</p>
+
+    <div class="row">
+      <input id="username" placeholder="Login">
+
+      <input
+        id="password"
+        type="password"
+        placeholder="Parol"
+      >
+
+      <button class="primary" onclick="login()">
+        Kirish
+      </button>
+    </div>
+
+    <p id="loginError"></p>
+
+  </section>
+
+
+  <!-- ADMIN PANEL -->
+  <main id="adminPanel" class="hidden">
+
+    <div class="row"
+         style="justify-content:space-between">
+
+      <div>
+        <h1>KILLIX</h1>
+        <span class="muted">
+          Admin boshqaruv paneli
+        </span>
+      </div>
+
+      <button onclick="logout()">
+        Chiqish
+      </button>
+
+    </div>
+
+
+    <!-- STATISTIKA -->
+
+    <div class="grid">
+
+      <div class="card">
+        <span class="muted">
+          Userlar
+        </span>
+
+        <div id="usersCount"
+             class="number">
+          0
+        </div>
+      </div>
+
+
+      <div class="card">
+
+        <span class="muted">
+          Jami coin
+        </span>
+
+        <div id="coinsCount"
+             class="number">
+          0
+        </div>
+
+      </div>
+
+
+      <div class="card">
+
+        <span class="muted">
+          Bloklangan
+        </span>
+
+        <div id="blockedCount"
+             class="number">
+          0
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- USERLAR -->
+
+    <div class="card">
+
+      <h2>Userlar</h2>
+
+      <div class="row">
+
+        <input
+          id="search"
+          placeholder="Username qidirish"
+          oninput="loadUsers()"
+        >
+
+        <button onclick="loadUsers()">
+          Qidirish
+        </button>
+
+      </div>
+
+
+      <div style="overflow:auto">
+
+        <table>
+
+          <thead>
+
+          <tr>
+            <th>User</th>
+            <th>Coin</th>
+            <th>Holat</th>
+            <th>Coin +/-</th>
+            <th>Amal</th>
+          </tr>
+
+          </thead>
+
+          <tbody id="usersTable"></tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script>
+
+async function api(url, options = {}) {
+
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json"
+    },
+    ...options
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw Error(data.error || "Xato");
+  }
+
+  return data;
+}
+
+
+async function login() {
+
+  try {
+
+    await api("/api/admin/login", {
+
+      method: "POST",
+
+      body: JSON.stringify({
+
+        username:
+          document.getElementById("username").value,
+
+        password:
+          document.getElementById("password").value
+
+      })
+
+    });
+
+    showPanel();
+
+  } catch (error) {
+
+    document.getElementById(
+      "loginError"
+    ).textContent = error.message;
+
+  }
+}
+
+
+async function logout() {
+
+  await api(
+    "/api/admin/logout",
+    {
+      method: "POST"
+    }
+  );
+
+  location.reload();
+
+}
+
+
+async function showPanel() {
+
+  document
+    .getElementById("loginBox")
+    .classList.add("hidden");
+
+  document
+    .getElementById("adminPanel")
+    .classList.remove("hidden");
+
+  await loadStats();
+  await loadUsers();
+
+}
+
+
+async function loadStats() {
+
+  const stats =
+    await api("/api/admin/stats");
+
+  document.getElementById(
+    "usersCount"
+  ).textContent = stats.users;
+
+  document.getElementById(
+    "coinsCount"
+  ).textContent = stats.coins;
+
+  document.getElementById(
+    "blockedCount"
+  ).textContent = stats.blocked;
+
+}
+
+
+async function loadUsers() {
+
+  const search =
+    document.getElementById("search").value;
+
+  const users =
+    await api(
+      "/api/admin/users?q=" +
+      encodeURIComponent(search)
+    );
+
+  const table =
+    document.getElementById("usersTable");
+
+  table.innerHTML =
+    users.map(user => `
+
+      <tr>
+
+        <td>
+          <b>${user.username}</b>
+          <br>
+          <span class="muted">
+            #${user.id}
+          </span>
+        </td>
+
+        <td>
+          ${user.coins}
+        </td>
+
+        <td>
+          ${user.blocked
+            ? "Bloklangan"
+            : "Faol"}
+        </td>
+
+        <td>
+
+          <div class="row">
+
+            <input
+              id="coin${user.id}"
+              type="number"
+              placeholder="+/- coin"
+              style="width:100px"
+            >
+
+            <button
+              onclick="changeCoins(${user.id})">
+
+              Saqlash
+
+            </button>
+
+          </div>
+
+        </td>
+
+        <td>
+
+          <button
+            onclick="blockUser(
+              ${user.id},
+              ${!user.blocked}
+            )">
+
+            ${user.blocked
+              ? "Ochish"
+              : "Bloklash"}
+
+          </button>
+
+        </td>
+
+      </tr>
+
+    `).join("");
+
+}
+
+
+async function changeCoins(id) {
+
+  const input =
+    document.getElementById(
+      "coin" + id
+    );
+
+  try {
+
+    await api(
+      "/api/admin/users/" +
+      id +
+      "/coins",
+      {
+
+        method: "POST",
+
+        body: JSON.stringify({
+          amount: Number(input.value)
+        })
+
+      }
+    );
+
+    input.value = "";
+
+    await loadStats();
+    await loadUsers();
+
+  } catch (error) {
+
+    alert(error.message);
+
+  }
+
+}
+
+
+async function blockUser(id, blocked) {
+
+  await api(
+    "/api/admin/users/" +
+    id +
+    "/block",
+    {
+
+      method: "POST",
+
+      body: JSON.stringify({
+        blocked: blocked
+      })
+
+    }
+  );
+
+  await loadStats();
+  await loadUsers();
+
+}
+
+
+(async () => {
+
+  try {
+
+    const me =
+      await api("/api/admin/me");
+
+    if (me.loggedIn) {
+      showPanel();
+    }
+
+  } catch {}
+
+})();
+
+</script>
+
+</body>
+</html>
